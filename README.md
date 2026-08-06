@@ -48,7 +48,8 @@
 
 ## Déploiement
 - **Plateforme** : Cloudflare Pages (Hono + Workers)
-- **Secret requis** : `NOTION_TOKEN` (jamais commité — `.dev.vars` en local, secret Cloudflare en production)
-- **Variable** : `NOTION_DATABASE_ID = 7a233b9f9f8e44b9a0805ef492276ac9`
-- **Statut** : ✅ Actif en développement (sandbox) — déploiement production à confirmer avec l'utilisateur (Cloudflare BYOK ou hébergement Genspark)
+- **URL de production** : https://psychofeminine.pages.dev ✅
+- **Secret requis** : `NOTION_TOKEN` (jamais commité — `.dev.vars` en local, secret Cloudflare Pages en production, configuré via `wrangler pages secret put`)
+- **Variable non-secrète** : `NOTION_DATABASE_ID = 7a233b9f9f8e44b9a0805ef492276ac9` (dans `wrangler.jsonc`, sous `vars`)
+- **Statut** : ✅ Déployé en production (Cloudflare BYOK, compte de l'utilisateur)
 - **Dernière mise à jour** : 2026-08-06
