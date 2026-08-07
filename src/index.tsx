@@ -215,9 +215,9 @@ app.get('/', (c) => {
                 <a href="#formules" class="header-menu-item" id="header-menu-coaching" role="menuitem">
                   <i class="fa-solid fa-handshake"></i> Coaching Privé
                 </a>
-                {/* 2. Formations : redirection externe directe vers la boutique Chariow */}
+                {/* 2. Formations : redirection externe directe vers la boutique Netlify */}
                 <a
-                  href="https://psychofeminine.mychariow.shop"
+                  href="https://psychofeminine-boutique.netlify.app/"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="header-menu-item"
