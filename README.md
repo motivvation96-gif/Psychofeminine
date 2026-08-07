@@ -1,55 +1,53 @@
-# PsychoFéminine — Catalogue interactif de résumés PDF & guides vidéo
+# PsychoFéminine
 
 ## Aperçu du projet
-- **Nom** : PsychoFéminine
-- **Objectif** : Offrir un catalogue interactif de résumés PDF gratuits liés à des vidéos YouTube, avec déblocage conditionné à une inscription e-mail (Systeme.io) et à 30 secondes de visionnage effectif, puis proposer des guides recommandés et du coaching privé.
-- **Stack** : Hono (TypeScript) + Cloudflare Pages/Workers, JS vanilla ES6+ côté client, CSS custom (design system à 3 thèmes).
+- **Nom** : PsychoFéminine — plateforme de résumés PDF & vidéos guides.
+- **Objectif** : Offrir gratuitement des résumés PDF de vidéos YouTube, avec capture e-mail (Systeme.io), règle de visionnage de 30s avant déblocage, et mise en avant du Coaching Privé.
+- **Fonctionnalités** :
+  - Catalogue dynamique alimenté par Notion (sécurisé, aucun token exposé côté client).
+  - Récupération dynamique des titres/miniatures YouTube via oEmbed.
+  - Aucune déduplication des `guideUrl` entre les fiches.
+  - Header/menu : Coaching Privé (scroll interne vers `#formules`), Formations (lien externe), Se connecter (vérification `localStorage`).
+  - Section Coaching Privé (`#formules`) avec 3 formules fixes.
+  - Règle de visionnage 30 secondes avec barre de progression avant déverrouillage du PDF.
+  - Lecture automatique (autoplay) de la vidéo YouTube au clic sur "Regarder la vidéo".
+  - Badge héro (au-dessus du H1) supprimé.
 
-## Fonctionnalités actuellement complétées
-- **Catalogue Notion en temps réel** via `GET /api/notion` (Worker Hono, le `NOTION_TOKEN` ne quitte jamais le serveur). Filtrage strict `Statut === "Publié"`.
-- **Mapping Notion strict** : `TITRE`, `Liens Vidéos YouTube`, `Fichier PDF`, `Lien du Guide Recommandé` (+ variantes), `Prix Guide Recommandé`, `Thématique`, `Statut` (gère `select` ET `status`).
-- **Miniature + titre YouTube dynamiques** : extraction de l'ID vidéo, `maxresdefault.jpg` avec repli auto vers `hqdefault.jpg`, titre exact via oEmbed (`/api/youtube-meta/:videoId`), avec repli sur `TITRE` Notion.
-- **Hero + preuve sociale dynamique** : titre **"Résumés & Guides PDF Gratuits de nos Vidéos"**, avatars superposés + compteur d'inscrits (`/api/stats` externe, fallback 1200).
-- **Recherche & filtres par thématique** en temps réel, **skeleton loading**, **toasts**, **empty/error states**.
-- **Accès strict Systeme.io** : aucun bypass. Le formulaire s'ouvre tant que `user_email` n'existe pas en `localStorage` ; succès détecté (postMessage / rechargement iframe) → `localStorage.user_email` + toast + ouverture de la modale de déblocage.
-- **Règle des 30 secondes de visionnage** : lecteur `YT.Player` (API IFrame), barre de progression dynamique, bouton PDF verrouillé/déverrouillé automatiquement.
-- **4 boutons de la modale de déblocage** : Télécharger le PDF (proxy `/api/download/:pageId`, forcé en pièce jointe), Acheter le guide recommandé (prix Notion), Regarder sur YouTube (rouge officiel), Réserver un Coaching Privé (scroll `#formules`).
-- **Header** : logo, switcher de thème (Sombre `#0A192F` / Clair / Intermédiaire, persistant via `localStorage.theme`), menu burger (Coaching Privé → scroll `#formules` ; Formations → `https://psychofeminine-boutique.netlify.app/` ; Se connecter → capture e-mail ou toast si déjà connecté).
-- **Correctif anti-clignotement** : le menu burger et le switcher de thème utilisent désormais exclusivement la classe `.is-open` pilotée en CSS (`opacity`/`pointer-events`), avec `e.stopPropagation()` sur les boutons et sur les dropdowns eux-mêmes — plus aucune race condition entre `setTimeout`/`requestAnimationFrame` et le listener global de fermeture.
-- **Autoplay vidéo** : `autoplay=1&enablejsapi=1` + `player.playVideo()` déclenché dans `onReady`, pour la modale de lecture libre et pour la modale de déblocage (règle des 30s).
-- **Section Coaching Privé (`#formules`)** conservée à l'identique (Séance découverte / Coaching complet / Accompagnement VIP).
+## URLs
+- **Production (déploiement GitHub-lié Cloudflare Pages)** : https://psychofeminine.pages.dev
+- **GitHub** : https://github.com/motivvation96-gif/Psychofeminine (branche `main`)
+- **API Notion (proxy sécurisé)** : `/api/notion`, `/api/volumes`, `/api/pdf/:pageId`, `/api/download/:pageId`, `/api/youtube-meta/:videoId`
+- **Formations (lien externe)** : https://psychofeminine-boutique.netlify.app/
+- **Coaching Privé (lien externe, CTA)** : https://coachingprive-psychofeminine.netlify.app/
 
-## Entrées fonctionnelles (endpoints)
-| Méthode | Route | Description |
-|---|---|---|
-| GET | `/` | Page d'accueil (SSR Hono JSX) |
-| GET | `/api/notion` | Catalogue brut Notion, filtré `Statut === "Publié"` — `{ results: [...] }` |
-| GET | `/api/volumes` | Catalogue normalisé côté serveur (compat interne) |
-| GET | `/api/pdf/:pageId` | Métadonnées + URL de téléchargement du PDF d'une fiche publiée |
-| GET | `/api/download/:pageId` | Téléchargement forcé du PDF (`Content-Disposition: attachment`) |
-| GET | `/api/youtube-meta/:videoId` | Titre exact YouTube via oEmbed (proxy + cache 6h) |
-
-## Non encore implémenté / pistes d'amélioration
-- Espace Membre dédié (au-delà du simple flag `user_email` en `localStorage`).
-- Statistiques d'usage internes (vues, téléchargements) — actuellement seul le compteur externe `/api/stats` est utilisé pour la preuve sociale.
-- Détection de soumission Systeme.io 100% fiable indépendante du comportement de l'iframe (actuellement : heuristique postMessage + double `load` de l'iframe).
-
-## Modèle de données & stockage
-- **Source de vérité** : base Notion (`database_id = 7a233b9f9f8e44b9a0805ef492276ac9`), interrogée exclusivement côté Worker (`src/notion.ts`).
-- **Aucune base Cloudflare (D1/KV/R2)** n'est utilisée pour l'instant : tout est recalculé à la demande depuis Notion, avec cache HTTP léger sur l'endpoint oEmbed.
-- **Session utilisateur** : `localStorage.user_email` (déblocage), `localStorage.theme` (thème préféré).
+## Architecture des données
+- **Modèles de données** : Fiches Notion (Titre, Liens Vidéos YouTube, Fichier PDF, Lien du Guide Recommandé, Prix Guide Recommandé, Thématique, Statut).
+- **Services de stockage** : Notion API (base de données) — accès exclusivement côté serveur (Cloudflare Worker).
+- **Flux de données** : Le Worker Hono interroge l'API Notion, normalise les propriétés (variantes de noms de colonnes), et expose un catalogue filtré (`Statut === "Publié"`) au frontend via des routes `/api/*`. Le token Notion (`NOTION_TOKEN`) ne quitte jamais le Worker.
 
 ## Guide utilisateur
-1. Parcourir le catalogue, filtrer par thématique ou rechercher un mot-clé.
-2. Cliquer sur une carte pour regarder la vidéo (lecture libre) ou sur "Débloquer le résumé PDF".
-3. Si première visite : renseigner son e-mail dans le formulaire Systeme.io (obligatoire, aucun contournement).
-4. Regarder au moins 30 secondes de la vidéo dans la modale de déblocage pour activer le téléchargement du PDF.
-5. Accéder en un clic au guide recommandé, à la vidéo YouTube ou à une réservation de coaching privé.
+1. Parcourez le catalogue de résumés sur la page d'accueil.
+2. Cliquez sur une fiche pour capturer votre e-mail (formulaire Systeme.io obligatoire).
+3. Regardez au moins 30 secondes de la vidéo YouTube (lecture automatique) pour débloquer le téléchargement du PDF.
+4. Téléchargez le résumé PDF gratuit, achetez le guide recommandé, ou réservez un Coaching Privé via la section `#formules`.
 
 ## Déploiement
-- **Plateforme** : Cloudflare Pages (Hono + Workers)
-- **URL de production** : https://psychofeminine.pages.dev ✅
-- **Secret requis** : `NOTION_TOKEN` (jamais commité — `.dev.vars` en local, secret Cloudflare Pages en production, configuré via `wrangler pages secret put`)
-- **Variable non-secrète** : `NOTION_DATABASE_ID = 7a233b9f9f8e44b9a0805ef492276ac9` (dans `wrangler.jsonc`, sous `vars`)
-- **Statut** : ✅ Déployé en production (Cloudflare BYOK, compte de l'utilisateur)
-- **Dernière mise à jour** : 2026-08-06
+- **Plateforme** : Cloudflare Pages — **déploiement GitHub-lié** (Workers for Platforms / Pages Git integration), utilisant le dépôt `motivvation96-gif/Psychofeminine` (branche `main`).
+- **Compte Cloudflare** : compte de l'utilisateur (BYOK — Bring Your Own Key / API Token).
+- **Configuration de build Cloudflare Pages** :
+  - Build command : `npm run build`
+  - Build output directory : `dist`
+  - Root directory : `/` (racine du repo)
+- **Variables/secrets d'environnement (Production & Preview)** :
+  - `NOTION_DATABASE_ID` (plain text) : `7a233b9f9f8e44b9a0805ef492276ac9`
+  - `NOTION_TOKEN` (secret) : configuré directement sur le projet Cloudflare Pages (jamais commité, jamais exposé côté client).
+- **Statut** : ✅ Actif — dernier déploiement réussi automatiquement depuis le commit `56747b1` (branche `main`).
+- **Stack technique** : Hono + TypeScript + Vite (`@hono/vite-build/cloudflare-pages`) + TailwindCSS (CDN) + FontAwesome (CDN).
+- **Dernière mise à jour** : 2026-08-07 — Lien "Formations" mis à jour vers `https://psychofeminine-boutique.netlify.app/` ; migration du déploiement Cloudflare Pages vers l'intégration GitHub (auto-déploiement à chaque push sur `main`).
+
+### Note technique — build Cloudflare Pages
+Ce projet est un Worker Hono construit avec Vite (`vite build` génère `dist/_worker.js` + assets statiques). Un build output directory à la racine (`/`) avec commande de build vide **ne fonctionnerait pas** pour cette stack : rien d'exécutable n'existe à la racine sans l'étape `npm run build`. La configuration correcte et validée en production est :
+- Build command : `npm run build`
+- Build output directory : `dist`
+
+Cette configuration a été appliquée sur le projet Cloudflare Pages `psychofeminine` lors de la liaison au dépôt GitHub, et le déploiement automatique a réussi (build + deploy stages en statut `success`).
